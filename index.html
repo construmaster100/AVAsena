@@ -43,16 +43,20 @@
     color: inherit;
   }
 
-  #viewport {
-    position: relative;
-    width: 100vw;
-    height: 100vh;
-    overflow: hidden;
-    background:
-      radial-gradient(circle at top, rgba(61, 199, 255, 0.12), transparent 35%),
-      radial-gradient(circle at bottom, rgba(0, 255, 180, 0.08), transparent 40%),
-      linear-gradient(180deg, var(--bg-glow) 0%, var(--bg-mid) 48%, var(--bg-deep) 100%);
-  }
+ #viewport {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+
+  background:
+    linear-gradient(rgba(5, 7, 11, 0.6), rgba(5, 7, 11, 0.85)),
+    url("https://raw.githubusercontent.com/USUARIO/REPO/main/assets/oficina.png");
+
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
 
   #bg-canvas {
     position: absolute;
