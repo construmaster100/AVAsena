@@ -3,700 +3,143 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MBP · Navegación 2D</title>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@500;700&display=swap');
-
-  *, *::before, *::after {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-  }
-
-  :root {
-    --bg-deep: #05070b;
-    --bg-mid: #0c1220;
-    --bg-glow: #102138;
-    --accent: #00ffb4;
-    --accent-2: #3dc7ff;
-    --accent-3: #7bf7d0;
-    --text-dim: rgba(180, 255, 228, 0.7);
-    --hud-bg: rgba(5, 10, 20, 0.78);
-    --hud-border: rgba(0, 255, 180, 0.24);
-    --panel-shadow: 0 16px 50px rgba(0, 0, 0, 0.35);
-    --mobile-pad-size: 74px;
-  }
-
-  html, body {
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    background: var(--bg-deep);
-    font-family: 'Share Tech Mono', monospace;
-    color: var(--accent);
-    user-select: none;
-    touch-action: none;
-  }
-
-  button {
-    font: inherit;
-    color: inherit;
-  }
-
- #viewport {
-  position: relative;
-  width: 100vw;
-  height: 100vh;
-  overflow: hidden;
-
-  background:
-    linear-gradient(rgba(5, 7, 11, 0.6), rgba(5, 7, 11, 0.85)),
-    url("https://raw.githubusercontent.com/construmaster100/AVAsena/7f9788abd39330cb7dcf46cd78d61d510c5eeeb9/Captura%20de%20pantalla%202026-04-25%20200348.png");
-
-  background-size: contain;
-  background-position: center;
-  background-repeat: no-repeat;
-}
-
-  #bg-canvas {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-  }
-
-  #viewport::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
-    mix-blend-mode: overlay;
-    opacity: 0.35;
-    pointer-events: none;
-    z-index: 1;
-  }
-
-  #char-canvas {
-    position: absolute;
-    pointer-events: none;
-    image-rendering: pixelated;
-    z-index: 10;
-    filter: drop-shadow(0 10px 16px rgba(0, 0, 0, 0.35));
-  }
-
-  #hud {
-    position: absolute;
-    top: 16px;
-    left: 16px;
-    z-index: 50;
-    padding: 16px 18px;
-    min-width: 260px;
-    background: var(--hud-bg);
-    border: 1px solid var(--hud-border);
-    backdrop-filter: blur(8px);
-    box-shadow: var(--panel-shadow);
-    clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%);
-  }
-
-  #hud h1 {
-    font-family: 'Orbitron', sans-serif;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    font-size: 12px;
-    color: var(--accent-3);
-    margin-bottom: 14px;
-    opacity: 0.9;
-  }
-
-  .hud-row {
-    display: flex;
-    justify-content: space-between;
-    gap: 18px;
-    font-size: 11px;
-    margin-bottom: 8px;
-  }
-
-  .hud-label {
-    color: var(--text-dim);
-  }
-
-  .hud-val {
-    color: var(--accent-2);
-    font-weight: bold;
-    text-align: right;
-  }
-
-  #state-val,
-  #mode-val,
-  #entity-val {
-    color: var(--accent);
-  }
-
-  #keys-display {
-    position: absolute;
-    bottom: 20px;
-    right: 20px;
-    z-index: 50;
-    display: grid;
-    grid-template-columns: repeat(3, 40px);
-    grid-template-rows: repeat(2, 40px);
-    gap: 6px;
-  }
-
-  .key {
-    width: 40px;
-    height: 40px;
-    border: 1px solid var(--hud-border);
-    background: var(--hud-bg);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 16px;
-    backdrop-filter: blur(5px);
-    transition: transform 0.08s ease, background 0.08s ease, border-color 0.08s ease, color 0.08s ease;
-    clip-path: polygon(0 0, calc(100% - 7px) 0, 100% 7px, 100% 100%, 0 100%);
-  }
-
-  .key.active {
-    background: rgba(0, 255, 180, 0.16);
-    border-color: var(--accent);
-    color: #fff;
-    transform: translateY(-1px);
-  }
-
-  #key-up { grid-column: 2; grid-row: 1; }
-  #key-left { grid-column: 1; grid-row: 2; }
-  #key-down { grid-column: 2; grid-row: 2; }
-  #key-right { grid-column: 3; grid-row: 2; }
-
-  #scanline {
-    position: absolute;
-    inset: 0;
-    background: repeating-linear-gradient(
-      to bottom,
-      transparent 0px,
-      transparent 3px,
-      rgba(0, 0, 0, 0.08) 3px,
-      rgba(0, 0, 0, 0.08) 4px
-    );
-    pointer-events: none;
-    z-index: 2;
-  }
-
-  .corner {
-    position: absolute;
-    width: 22px;
-    height: 22px;
-    border-color: rgba(0, 255, 180, 0.45);
-    border-style: solid;
-    z-index: 5;
-  }
-
-  .corner.tl { top: 8px; left: 8px; border-width: 2px 0 0 2px; }
-  .corner.tr { top: 8px; right: 8px; border-width: 2px 2px 0 0; }
-  .corner.bl { bottom: 8px; left: 8px; border-width: 0 0 2px 2px; }
-  .corner.br { bottom: 8px; right: 8px; border-width: 0 2px 2px 0; }
-
-  #shadow {
-    position: absolute;
-    pointer-events: none;
-    z-index: 9;
-    border-radius: 50%;
-    background: radial-gradient(ellipse, rgba(0, 0, 0, 0.55) 0%, transparent 70%);
-    transform: translateX(-50%);
-  }
-
-  #mobile-controls {
-    position: absolute;
-    left: 20px;
-    bottom: 18px;
-    z-index: 60;
-    display: none;
-    grid-template-columns: repeat(3, var(--mobile-pad-size));
-    grid-template-rows: repeat(3, var(--mobile-pad-size));
-    gap: 8px;
-    pointer-events: auto;
-  }
-
-  .pad-btn {
-    border: 1px solid rgba(0, 255, 180, 0.3);
-    background: rgba(4, 12, 24, 0.72);
-    color: #f3fffd;
-    border-radius: 18px;
-    backdrop-filter: blur(8px);
-    font-size: 26px;
-    touch-action: none;
-  }
-
-  .pad-btn.active {
-    background: rgba(0, 255, 180, 0.18);
-    border-color: var(--accent);
-  }
-
-  #pad-up { grid-column: 2; grid-row: 1; }
-  #pad-left { grid-column: 1; grid-row: 2; }
-  #pad-down { grid-column: 2; grid-row: 3; }
-  #pad-right { grid-column: 3; grid-row: 2; }
-
-  @media (max-width: 720px), (pointer: coarse) {
-    #hud {
-      min-width: 215px;
-      padding: 14px;
-    }
-
-    #keys-display {
-      display: none;
-    }
-
-    #mobile-controls {
-      display: grid;
-    }
-  }
-
-  @media (max-width: 520px) {
-    :root {
-      --mobile-pad-size: 62px;
-    }
-
-    #hud {
-      left: 10px;
-      top: 10px;
-      min-width: 188px;
-    }
-
-    .hud-row {
-      font-size: 10px;
-    }
-  }
-</style>
+<title>Construmaster</title>
+<link rel="stylesheet" href="style.css"> <!-- tu CSS -->
 </head>
+
 <body>
-<div id="viewport">
-  <canvas id="bg-canvas"></canvas>
-  <div id="scanline"></div>
-  <div class="corner tl"></div>
-  <div class="corner tr"></div>
-  <div class="corner bl"></div>
-  <div class="corner br"></div>
 
-  <div id="shadow"></div>
-  <canvas id="char-canvas" width="64" height="96"></canvas>
-
-  <div id="hud">
-    <h1>MBP · Sistema 2D</h1>
-    <div class="hud-row"><span class="hud-label">Entidad</span><span class="hud-val" id="entity-val">maniquí low-poly</span></div>
-    <div class="hud-row"><span class="hud-label">X</span><span class="hud-val" id="hud-x">0</span></div>
-    <div class="hud-row"><span class="hud-label">Y</span><span class="hud-val" id="hud-y">0</span></div>
-    <div class="hud-row"><span class="hud-label">Estado</span><span class="hud-val" id="state-val">idle</span></div>
-    <div class="hud-row"><span class="hud-label">Vista</span><span class="hud-val" id="view-val">front</span></div>
-    <div class="hud-row"><span class="hud-label">Frame</span><span class="hud-val" id="frame-val">0</span></div>
-    <div class="hud-row"><span class="hud-label">Modo</span><span class="hud-val" id="mode-val">teclado</span></div>
-    <div class="hud-row"><span class="hud-label">Velocidad</span><span class="hud-val" id="speed-val">260 px/s</span></div>
-  </div>
-
-  <div id="keys-display" aria-hidden="true">
-    <div class="key" id="key-up">↑</div>
-    <div class="key" id="key-left">←</div>
-    <div class="key" id="key-down">↓</div>
-    <div class="key" id="key-right">→</div>
-  </div>
-
-  <div id="mobile-controls" aria-label="Controles táctiles">
-    <button class="pad-btn" id="pad-up" aria-label="Mover arriba">↑</button>
-    <button class="pad-btn" id="pad-left" aria-label="Mover izquierda">←</button>
-    <button class="pad-btn" id="pad-down" aria-label="Mover abajo">↓</button>
-    <button class="pad-btn" id="pad-right" aria-label="Mover derecha">→</button>
-  </div>
+<!-- TOP BAR -->
+<div class="topbar">
+  Contacto: construmaster@gmail.com
 </div>
 
+<!-- NAVBAR -->
+<nav class="navbar">
+
+  <!-- LOGO -->
+  <div class="logo-container">
+    <img src="logo.png" class="logo-circle">
+  </div>
+
+  <!-- MENU -->
+  <ul class="menu">
+    <li>
+      <a href="#inicio">INICIO</a>
+      <ul class="submenu">
+        <li><a href="#">Opción 1</a></li>
+        <li><a href="#">Opción 2</a></li>
+        <li><a href="#">Opción 3</a></li>
+      </ul>
+    </li>
+
+    <li>
+      <a href="#proyectos">Proyectos</a>
+      <ul class="submenu">
+        <li><a href="#">Opción 1</a></li>
+        <li><a href="#">Opción 2</a></li>
+        <li><a href="#">Opción 3</a></li>
+      </ul>
+    </li>
+
+    <li>
+      <a href="#licencias">Licencias</a>
+      <ul class="submenu">
+        <li><a href="#">Opción 1</a></li>
+        <li><a href="#">Opción 2</a></li>
+        <li><a href="#">Opción 3</a></li>
+      </ul>
+    </li>
+
+    <li>
+      <a href="#cotizar">Cotizar</a>
+      <ul class="submenu">
+        <li><a href="#">Opción 1</a></li>
+        <li><a href="#">Opción 2</a></li>
+        <li><a href="#">Opción 3</a></li>
+      </ul>
+    </li>
+  </ul>
+</nav>
+
+<!-- CONTENIDO -->
+<main>
+
+  <!-- INICIO -->
+  <section id="inicio" class="video">
+    <h2>Inicio</h2>
+
+    <div class="video-slider">
+      <button class="prev" onclick="cambiarVideo(-1)">❮</button>
+
+      <div class="video-frame">
+        <iframe id="videoPlayer"
+          src="https://www.youtube.com/embed/UJKqewleNxg"
+          allowfullscreen>
+        </iframe>
+      </div>
+
+      <button class="next" onclick="cambiarVideo(1)">❯</button>
+    </div>
+  </section>
+
+  <!-- GALERIA -->
+  <section id="proyectos" class="galeria">
+    <h2>Galería</h2>
+
+    <div class="carousel">
+      <div class="carousel-images" id="carousel">
+        <img src="C1.jpg">
+        <img src="C2.jpg">
+        <img src="C3.jpg">
+      </div>
+    </div>
+
+    <div class="carousel-buttons">
+      <button onclick="moveSlide(-1)">⬅</button>
+      <button onclick="moveSlide(1)">➡</button>
+    </div>
+  </section>
+
+  <!-- LICENCIAS -->
+  <section id="licencias">
+    <h2>Licencias</h2>
+  </section>
+
+  <!-- COTIZAR -->
+  <section id="cotizar">
+    <h2>Cotizar</h2>
+  </section>
+
+</main>
+
+<!-- FOOTER -->
+<footer>
+  WhatsApp: +57 313 3954816
+</footer>
+
 <script>
-const bgCanvas = document.getElementById('bg-canvas');
-const bgCtx = bgCanvas.getContext('2d');
-const charCanvas = document.getElementById('char-canvas');
-const ctx = charCanvas.getContext('2d');
+/* VIDEO */
+const videos = ["UJKqewleNxg"];
+let i = 0;
 
-const hudX = document.getElementById('hud-x');
-const hudY = document.getElementById('hud-y');
-const stateVal = document.getElementById('state-val');
-const viewVal = document.getElementById('view-val');
-const frameVal = document.getElementById('frame-val');
-const modeVal = document.getElementById('mode-val');
-const speedVal = document.getElementById('speed-val');
-const shadowEl = document.getElementById('shadow');
+function cambiarVideo(dir) {
+  i = (i + dir + videos.length) % videos.length;
 
-const keyEls = {
-  up: document.getElementById('key-up'),
-  down: document.getElementById('key-down'),
-  left: document.getElementById('key-left'),
-  right: document.getElementById('key-right')
-};
-
-const mobileButtons = {
-  up: document.getElementById('pad-up'),
-  down: document.getElementById('pad-down'),
-  left: document.getElementById('pad-left'),
-  right: document.getElementById('pad-right')
-};
-
-const CW = 64;
-const CH = 96;
-const SPEED = 260;
-const ANIM_INTERVAL = 0.16;
-
-const PALETTE = {
-  front: { head: '#79f1a5', headLight: '#a8ffca', torso: '#2fd56f', torsoShade: '#198f49', limb: '#44eb86', limbShade: '#138446', foot: '#0f5930', outline: 'rgba(6, 28, 16, 0.55)' },
-  back: { head: '#68da92', headLight: '#8ff1b2', torso: '#24b961', torsoShade: '#146b38', limb: '#2fd270', limbShade: '#0f5e32', foot: '#0a4424', outline: 'rgba(5, 22, 13, 0.6)' },
-  left: { head: '#74eba0', headLight: '#a1ffc2', torso: '#2bca68', torsoShade: '#177842', limb: '#42e682', limbShade: '#126d3a', foot: '#0e512c', outline: 'rgba(6, 28, 16, 0.55)' },
-  right: { head: '#74eba0', headLight: '#a1ffc2', torso: '#2bca68', torsoShade: '#177842', limb: '#42e682', limbShade: '#126d3a', foot: '#0e512c', outline: 'rgba(6, 28, 16, 0.55)' }
-};
-
-const keys = { up: false, down: false, left: false, right: false };
-
-let char = {
-  x: window.innerWidth / 2 - CW / 2,
-  y: window.innerHeight / 2 - CH / 2,
-  state: 'idle',
-  frame: 0,
-  dir: 'front'
-};
-
-let lastTime = 0;
-let animTimer = 0;
-let inputMode = 'teclado';
-
-function resizeScene() {
-  bgCanvas.width = window.innerWidth;
-  bgCanvas.height = window.innerHeight;
-  clampChar();
+  const player = document.getElementById("videoPlayer");
+  player.src = ""; // limpia primero
+  player.src = "https://www.youtube.com/embed/" + videos[i];
 }
 
-function drawBg() {
-  const W = bgCanvas.width;
-  const H = bgCanvas.height;
-  bgCtx.clearRect(0, 0, W, H);
-
-  const grad = bgCtx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(W, H) * 0.76);
-  grad.addColorStop(0, '#132137');
-  grad.addColorStop(0.48, '#0c1220');
-  grad.addColorStop(1, '#05070b');
-  bgCtx.fillStyle = grad;
-  bgCtx.fillRect(0, 0, W, H);
-
-  const cell = Math.max(40, Math.round(Math.min(W, H) / 18));
-  bgCtx.strokeStyle = 'rgba(0,255,180,0.08)';
-  bgCtx.lineWidth = 1;
-
-  for (let x = 0; x <= W; x += cell) {
-    bgCtx.beginPath();
-    bgCtx.moveTo(x, 0);
-    bgCtx.lineTo(x, H);
-    bgCtx.stroke();
-  }
-
-  for (let y = 0; y <= H; y += cell) {
-    bgCtx.beginPath();
-    bgCtx.moveTo(0, y);
-    bgCtx.lineTo(W, y);
-    bgCtx.stroke();
-  }
-
-  bgCtx.fillStyle = 'rgba(0,255,180,0.16)';
-  for (let x = 0; x <= W; x += cell) {
-    for (let y = 0; y <= H; y += cell) {
-      bgCtx.beginPath();
-      bgCtx.arc(x, y, 1.2, 0, Math.PI * 2);
-      bgCtx.fill();
-    }
-  }
-
-  const floorGrad = bgCtx.createLinearGradient(0, H * 0.56, 0, H);
-  floorGrad.addColorStop(0, 'rgba(61,199,255,0)');
-  floorGrad.addColorStop(1, 'rgba(61,199,255,0.08)');
-  bgCtx.fillStyle = floorGrad;
-  bgCtx.fillRect(0, H * 0.56, W, H * 0.44);
-
-  bgCtx.strokeStyle = 'rgba(61,199,255,0.16)';
-  bgCtx.beginPath();
-  bgCtx.moveTo(0, H * 0.65);
-  bgCtx.lineTo(W, H * 0.65);
-  bgCtx.stroke();
+/* GALERIA */
+let index = 0;
+function moveSlide(step) {
+  const carousel = document.getElementById("carousel");
+  const total = carousel.children.length;
+  index = (index + step + total) % total;
+  carousel.style.transform = `translateX(-${index * 100}%)`;
 }
-
-function poly(points, fill, stroke = null) {
-  ctx.beginPath();
-  ctx.moveTo(points[0][0], points[0][1]);
-  for (let i = 1; i < points.length; i += 1) {
-    ctx.lineTo(points[i][0], points[i][1]);
-  }
-  ctx.closePath();
-  ctx.fillStyle = fill;
-  ctx.fill();
-  if (stroke) {
-    ctx.strokeStyle = stroke;
-    ctx.lineWidth = 1;
-    ctx.stroke();
-  }
-}
-
-function circle(x, y, r, fill, stroke = null) {
-  ctx.beginPath();
-  ctx.arc(x, y, r, 0, Math.PI * 2);
-  ctx.fillStyle = fill;
-  ctx.fill();
-  if (stroke) {
-    ctx.strokeStyle = stroke;
-    ctx.lineWidth = 1;
-    ctx.stroke();
-  }
-}
-
-function drawHead(p, x) {
-  circle(x, 23, 10.5, p.head, p.outline);
-  poly([[x - 7, 21], [x, 13], [x + 7, 21], [x + 4, 30], [x - 4, 30]], p.headLight);
-  poly([[x, 13], [x + 7, 21], [x + 4, 30], [x, 28]], p.head);
-}
-
-function drawTorsoFront(p) {
-  poly([[21, 38], [43, 38], [47, 61], [17, 61]], p.torso, p.outline);
-  poly([[32, 34], [39, 38], [25, 38]], p.headLight, p.outline);
-  poly([[32, 38], [43, 38], [47, 61], [32, 61]], p.torsoShade);
-  poly([[17, 61], [47, 61], [39, 69], [25, 69]], p.limbShade, p.outline);
-}
-
-function drawTorsoBack(p) {
-  poly([[21, 38], [43, 38], [47, 61], [17, 61]], p.torsoShade, p.outline);
-  poly([[32, 34], [39, 38], [25, 38]], p.headLight, p.outline);
-  poly([[17, 38], [32, 38], [32, 61], [17, 61]], p.torso);
-  poly([[17, 61], [47, 61], [39, 69], [25, 69]], p.torso, p.outline);
-}
-
-function drawArm(x, y, sway, p, front = true) {
-  poly([
-    [x, y],
-    [x + 8, y - 1],
-    [x + 9, y + 21 + sway],
-    [x + 2, y + 23 + sway]
-  ], front ? p.limb : p.limbShade, p.outline);
-}
-
-function drawLeg(x, sway, p, front = true) {
-  poly([
-    [x, 67],
-    [x + 8, 67],
-    [x + 9, 86 + sway],
-    [x + 2, 86 + sway]
-  ], front ? p.limb : p.limbShade, p.outline);
-  poly([
-    [x - 1, 84 + sway],
-    [x + 9, 84 + sway],
-    [x + 8, 88 + sway],
-    [x, 88 + sway]
-  ], p.foot, p.outline);
-}
-
-function drawFront(p, swing) {
-  drawArm(16, 42 + swing * 2, swing * 2, p, true);
-  drawArm(40, 42 - swing * 2, -swing * 2, p, true);
-  drawTorsoFront(p);
-  drawLeg(23 - swing * 2, swing * 2, p, false);
-  drawLeg(33 + swing * 2, -swing * 2, p, true);
-  drawHead(p, 32);
-}
-
-function drawBack(p, swing) {
-  drawArm(16, 42 - swing * 2, -swing * 2, p, false);
-  drawArm(40, 42 + swing * 2, swing * 2, p, false);
-  drawTorsoBack(p);
-  drawLeg(23 - swing * 2, swing * 2, p, false);
-  drawLeg(33 + swing * 2, -swing * 2, p, true);
-  drawHead(p, 32);
-}
-
-function drawSide(p, swing, right) {
-  const x = right ? 35 : 29;
-  const dir = right ? 1 : -1;
-  const backArmY = 43 + swing * 2;
-  const frontArmY = 42 - swing * 2;
-  const backArmSway = swing * 2;
-  const frontArmSway = -swing * 2;
-  const backLegX = x - 4 + swing;
-  const frontLegX = x - 1 + dir * 5 - swing;
-  const backLegSway = swing * 2;
-  const frontLegSway = -swing * 2;
-
-  drawArm(x - 7, backArmY, backArmSway, p, false);
-  drawArm(x + 1, frontArmY, frontArmSway, p, true);
-  poly([[x - 8, 39], [x + 4, 38], [x + 8, 61], [x - 7, 62]], p.torso, p.outline);
-  poly([[x - 1, 38], [x + 8, 61], [x + 2, 68], [x - 2, 61]], p.torsoShade);
-  drawLeg(backLegX, backLegSway, p, false);
-  drawLeg(frontLegX, frontLegSway, p, true);
-  drawHead(p, x);
-}
-
-function drawMannequin(dir, frame) {
-  ctx.clearRect(0, 0, CW, CH);
-  const p = PALETTE[dir] || PALETTE.front;
-  const swing = frame === 0 ? -1 : 1;
-
-  if (dir === 'front') drawFront(p, swing);
-  else if (dir === 'back') drawBack(p, swing);
-  else if (dir === 'left') drawSide(p, swing, false);
-  else drawSide(p, swing, true);
-}
-
-function setKeyState(direction, active, mode = inputMode) {
-  keys[direction] = active;
-  inputMode = mode;
-  modeVal.textContent = mode;
-}
-
-function normalizeKey(key) {
-  const lower = key.toLowerCase();
-  if (lower === 'arrowup' || lower === 'w') return 'up';
-  if (lower === 'arrowdown' || lower === 's') return 'down';
-  if (lower === 'arrowleft' || lower === 'a') return 'left';
-  if (lower === 'arrowright' || lower === 'd') return 'right';
-  return null;
-}
-
-document.addEventListener('keydown', event => {
-  const dir = normalizeKey(event.key);
-  if (!dir) return;
-  setKeyState(dir, true, 'teclado');
-  event.preventDefault();
-});
-
-document.addEventListener('keyup', event => {
-  const dir = normalizeKey(event.key);
-  if (!dir) return;
-  setKeyState(dir, false, 'teclado');
-});
-
-window.addEventListener('blur', () => {
-  for (const dir of Object.keys(keys)) keys[dir] = false;
-});
-
-function bindPadButton(button, direction) {
-  const press = event => {
-    event.preventDefault();
-    setKeyState(direction, true, 'táctil');
-  };
-
-  const release = event => {
-    event.preventDefault();
-    setKeyState(direction, false, 'táctil');
-  };
-
-  button.addEventListener('pointerdown', press);
-  button.addEventListener('pointerup', release);
-  button.addEventListener('pointercancel', release);
-  button.addEventListener('pointerleave', release);
-}
-
-for (const [dir, button] of Object.entries(mobileButtons)) {
-  bindPadButton(button, dir);
-}
-
-function resolveState() {
-  const up = keys.up && !keys.down;
-  const down = keys.down && !keys.up;
-  const left = keys.left && !keys.right;
-  const right = keys.right && !keys.left;
-
-  if (!up && !down && !left && !right) return 'idle';
-  if (up) return 'up';
-  if (down) return 'down';
-  if (left) return 'left';
-  if (right) return 'right';
-  return 'idle';
-}
-
-function updateDir(state) {
-  if (state === 'up') char.dir = 'back';
-  if (state === 'down') char.dir = 'front';
-  if (state === 'left') char.dir = 'left';
-  if (state === 'right') char.dir = 'right';
-}
-
-function updatePosition(state, dt) {
-  const distance = SPEED * dt;
-  const maxX = window.innerWidth - CW;
-  const maxY = window.innerHeight - CH;
-
-  if (state === 'up') char.y = Math.max(0, char.y - distance);
-  if (state === 'down') char.y = Math.min(maxY, char.y + distance);
-  if (state === 'left') char.x = Math.max(0, char.x - distance);
-  if (state === 'right') char.x = Math.min(maxX, char.x + distance);
-}
-
-function clampChar() {
-  char.x = Math.min(Math.max(0, char.x), Math.max(0, window.innerWidth - CW));
-  char.y = Math.min(Math.max(0, char.y), Math.max(0, window.innerHeight - CH));
-}
-
-function renderHud(state) {
-  hudX.textContent = Math.round(char.x);
-  hudY.textContent = Math.round(char.y);
-  stateVal.textContent = state === 'idle' ? 'idle' : `${state}_${char.frame}`;
-  viewVal.textContent = char.dir;
-  frameVal.textContent = char.frame;
-  speedVal.textContent = `${SPEED} px/s`;
-
-  for (const [dir, el] of Object.entries(keyEls)) {
-    el.classList.toggle('active', keys[dir]);
-  }
-
-  for (const [dir, button] of Object.entries(mobileButtons)) {
-    button.classList.toggle('active', keys[dir]);
-  }
-}
-
-function renderCharacter() {
-  charCanvas.style.left = `${char.x}px`;
-  charCanvas.style.top = `${char.y}px`;
-
-  const shadowWidth = 38;
-  const shadowHeight = 13;
-  shadowEl.style.width = `${shadowWidth}px`;
-  shadowEl.style.height = `${shadowHeight}px`;
-  shadowEl.style.left = `${char.x + CW / 2}px`;
-  shadowEl.style.top = `${char.y + CH - 4}px`;
-}
-
-function loop(timestamp) {
-  if (!lastTime) lastTime = timestamp;
-  const dt = Math.min((timestamp - lastTime) / 1000, 0.033);
-  lastTime = timestamp;
-
-  const state = resolveState();
-  char.state = state;
-
-  if (state !== 'idle') {
-    updateDir(state);
-    updatePosition(state, dt);
-    animTimer += dt;
-
-    if (animTimer >= ANIM_INTERVAL) {
-      char.frame = char.frame === 0 ? 1 : 0;
-      animTimer = 0;
-    }
-  } else {
-    char.frame = 0;
-    animTimer = 0;
-  }
-
-  drawMannequin(char.dir, char.frame);
-  renderCharacter();
-  renderHud(state);
-  requestAnimationFrame(loop);
-}
-
-window.addEventListener('resize', resizeScene);
-resizeScene();
-drawMannequin(char.dir, char.frame);
-requestAnimationFrame(loop);
 </script>
+
 </body>
 </html>
-
